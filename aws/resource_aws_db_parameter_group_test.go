@@ -103,6 +103,10 @@ func TestAccAWSDBParameterGroup_basic(t *testing.T) {
 						"name":  "character_set_client",
 						"value": "utf8",
 					}),
+					tfawsresource.TestCheckTypeSetElemNestedAttrs(resourceName, "parameter.*", map[string]string{
+						"name":  "max_connections",
+						"value": "500",
+					}),
 					testAccMatchResourceAttrRegionalARN(resourceName, "arn", "rds", regexp.MustCompile(fmt.Sprintf("pg:%s$", groupName))),
 				),
 			},
@@ -138,8 +142,17 @@ func TestAccAWSDBParameterGroup_basic(t *testing.T) {
 						"name":  "character_set_client",
 						"value": "utf8",
 					}),
+					tfawsresource.TestCheckTypeSetElemNestedAttrs(resourceName, "parameter.*", map[string]string{
+						"name":  "max_connections",
+						"value": "1000",
+					}),
 					testAccMatchResourceAttrRegionalARN(resourceName, "arn", "rds", regexp.MustCompile(fmt.Sprintf("pg:%s$", groupName))),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 			{
 				Config: testAccAWSDBParameterGroupConfig(groupName),
@@ -148,7 +161,7 @@ func TestAccAWSDBParameterGroup_basic(t *testing.T) {
 					testAccCheckAWSDBParameterGroupAttributes(&v, groupName),
 					testAccCheckAWSDBParameterNotUserDefined(resourceName, "collation_connection"),
 					testAccCheckAWSDBParameterNotUserDefined(resourceName, "collation_server"),
-					resource.TestCheckResourceAttr(resourceName, "parameter.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "parameter.#", "4"),
 					tfawsresource.TestCheckTypeSetElemNestedAttrs(resourceName, "parameter.*", map[string]string{
 						"name":  "character_set_results",
 						"value": "utf8",
@@ -160,6 +173,10 @@ func TestAccAWSDBParameterGroup_basic(t *testing.T) {
 					tfawsresource.TestCheckTypeSetElemNestedAttrs(resourceName, "parameter.*", map[string]string{
 						"name":  "character_set_client",
 						"value": "utf8",
+					}),
+					tfawsresource.TestCheckTypeSetElemNestedAttrs(resourceName, "parameter.*", map[string]string{
+						"name":  "max_connections",
+						"value": "500",
 					}),
 				),
 			},
@@ -679,6 +696,11 @@ resource "aws_db_parameter_group" "test" {
     name  = "character_set_results"
     value = "utf8"
   }
+
+  parameter {
+	name  = "max_connections"
+    value = "500"
+  }
 }
 `, n)
 }
@@ -736,6 +758,11 @@ resource "aws_db_parameter_group" "test" {
   parameter {
     name  = "collation_connection"
     value = "utf8_unicode_ci"
+  }
+
+  parameter {
+    name  = "max_connections"
+    value = "1000"
   }
 }
 `, n)

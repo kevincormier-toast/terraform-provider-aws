@@ -278,7 +278,22 @@ func resourceAwsDbParameterGroupUpdate(d *schema.ResourceData, meta interface{})
 		}
 
 		// Reset parameters that have been removed
-		resetParameters := expandParameters(os.Difference(ns).List())
+		// We can't use os.Difference since we hash the entire object for the key.
+
+		resetParamsMap := make(map[string]*rds.Parameter)
+		for _, osParam := range expandParameters(os.List()) {
+			resetParamsMap[*osParam.ParameterName] = osParam
+		}
+
+		for _, nsParam := range expandParameters(ns.List()) {
+			delete(resetParamsMap, *nsParam.ParameterName)
+		}
+
+		resetParameters := make([]*rds.Parameter, 0)
+		for _, resetParam := range resetParamsMap {
+			resetParameters = append(resetParameters, resetParam)
+		}
+
 		if len(resetParameters) > 0 {
 			maxParams := 20
 			for resetParameters != nil {
