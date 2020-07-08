@@ -3919,6 +3919,16 @@ func diffDynamoDbGSI(oldGsi, newGsi []interface{}, billingMode string) (ops []*d
 
 			oldWriteCapacity, oldReadCapacity := oldMap["write_capacity"].(int), oldMap["read_capacity"].(int)
 			newWriteCapacity, newReadCapacity := newMap["write_capacity"].(int), newMap["read_capacity"].(int)
+
+			// Autoscaling is set up individually for read and write.  We can't guarantee it is on for both.
+			if val, ok := newMap["autoscaled_write_capacity"]; ok && val.(bool) {
+				newWriteCapacity = oldWriteCapacity
+			}
+
+			if val, ok := newMap["autoscaled_read_capacity"]; ok && val.(bool) {
+				newReadCapacity = oldReadCapacity
+			}
+
 			capacityChanged := (oldWriteCapacity != newWriteCapacity || oldReadCapacity != newReadCapacity)
 
 			oldAttributes, err := stripCapacityAttributes(oldMap)
@@ -3980,6 +3990,8 @@ func stripCapacityAttributes(in map[string]interface{}) (map[string]interface{},
 
 	delete(m, "write_capacity")
 	delete(m, "read_capacity")
+	delete(m, "autoscaled_write_capacity")
+	delete(m, "autoscaled_read_capacity")
 
 	return m, nil
 }

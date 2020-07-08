@@ -97,9 +97,29 @@ func resourceAwsDynamoDbTable() *schema.Resource {
 			"write_capacity": {
 				Type:     schema.TypeInt,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != "" && d.Get("autoscaled_write_capacity").(bool) {
+						return true
+					}
+					return false
+				},
+			},
+			"autoscaled_write_capacity": {
+				Type:     schema.TypeBool,
+				Optional: true,
 			},
 			"read_capacity": {
 				Type:     schema.TypeInt,
+				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != "" && d.Get("autoscaled_read_capacity").(bool) {
+						return true
+					}
+					return false
+				},
+			},
+			"autoscaled_read_capacity": {
+				Type:     schema.TypeBool,
 				Optional: true,
 			},
 			"attribute": {
@@ -193,8 +213,16 @@ func resourceAwsDynamoDbTable() *schema.Resource {
 							Type:     schema.TypeInt,
 							Optional: true,
 						},
+						"autoscaled_write_capacity": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
 						"read_capacity": {
 							Type:     schema.TypeInt,
+							Optional: true,
+						},
+						"autoscaled_read_capacity": {
+							Type:     schema.TypeBool,
 							Optional: true,
 						},
 						"hash_key": {

@@ -82,6 +82,32 @@ func TestDiffDynamoDbGSI(t *testing.T) {
 			ExpectedUpdates: []*dynamodb.GlobalSecondaryIndexUpdate{},
 		},
 
+		{ // autoscaling No-op
+			Old: []interface{}{
+				map[string]interface{}{
+					"name":                      "att1-index",
+					"hash_key":                  "att1",
+					"write_capacity":            10,
+					"autoscaled_write_capacity": false,
+					"read_capacity":             10,
+					"autoscaled_read_capacity":  false,
+					"projection_type":           "ALL",
+				},
+			},
+			New: []interface{}{
+				map[string]interface{}{
+					"name":                      "att1-index",
+					"hash_key":                  "att1",
+					"write_capacity":            20,
+					"autoscaled_write_capacity": true,
+					"read_capacity":             20,
+					"autoscaled_read_capacity":  true,
+					"projection_type":           "ALL",
+				},
+			},
+			ExpectedUpdates: []*dynamodb.GlobalSecondaryIndexUpdate{},
+		},
+
 		{ // Creation
 			Old: []interface{}{
 				map[string]interface{}{
@@ -644,6 +670,52 @@ func TestAccAWSDynamoDbTable_streamSpecificationValidation(t *testing.T) {
 			{
 				Config:      testAccAWSDynamoDbConfigStreamSpecification("anything", true, ""),
 				ExpectError: regexp.MustCompile(`stream_view_type is required when stream_enabled = true`),
+			},
+		},
+	})
+}
+
+func TestAccAWSDynamoDbTable_autoscaledCapacity(t *testing.T) {
+	var conf dynamodb.DescribeTableOutput
+	resourceName := "aws_dynamodb_table.test"
+	rName := acctest.RandomWithPrefix("TerraformTestTable-")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAWSDynamoDbTableDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccAWSDynamoDbConfig_basicScaled1(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckInitialAWSDynamoDbTableExists(resourceName, &conf),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "read_capacity", "1"),
+					resource.TestCheckResourceAttr(resourceName, "write_capacity", "1"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: false,
+			},
+			{
+				Config: testAccAWSDynamoDbConfig_basicScaled2(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckInitialAWSDynamoDbTableExists(resourceName, &conf),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "read_capacity", "1"),
+					resource.TestCheckResourceAttr(resourceName, "write_capacity", "1"),
+				),
+			},
+			{
+				Config: testAccAWSDynamoDbConfig_basicScaled3(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckInitialAWSDynamoDbTableExists(resourceName, &conf),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "read_capacity", "2"),
+					resource.TestCheckResourceAttr(resourceName, "write_capacity", "1"),
+				),
 			},
 		},
 	})
@@ -1544,6 +1616,60 @@ resource "aws_dynamodb_table" "test" {
   read_capacity  = 1
   write_capacity = 1
   hash_key       = "TestTableHashKey"
+
+  attribute {
+    name = "TestTableHashKey"
+    type = "S"
+  }
+}
+`, rName)
+}
+
+func testAccAWSDynamoDbConfig_basicScaled1(rName string) string {
+	return fmt.Sprintf(`
+resource "aws_dynamodb_table" "test" {
+  name                      = "%s"
+  read_capacity             = 1
+  autoscaled_read_capacity  = true
+  write_capacity            = 1
+  autoscaled_write_capacity = true
+  hash_key                  = "TestTableHashKey"
+
+  attribute {
+    name = "TestTableHashKey"
+    type = "S"
+  }
+}
+`, rName)
+}
+
+func testAccAWSDynamoDbConfig_basicScaled2(rName string) string {
+	return fmt.Sprintf(`
+resource "aws_dynamodb_table" "test" {
+  name                      = "%s"
+  read_capacity             = 2
+  autoscaled_read_capacity  = true
+  write_capacity            = 2
+  autoscaled_write_capacity = true
+  hash_key                  = "TestTableHashKey"
+
+  attribute {
+    name = "TestTableHashKey"
+    type = "S"
+  }
+}
+`, rName)
+}
+
+func testAccAWSDynamoDbConfig_basicScaled3(rName string) string {
+	return fmt.Sprintf(`
+resource "aws_dynamodb_table" "test" {
+  name                      = "%s"
+  read_capacity             = 2
+  autoscaled_read_capacity  = false
+  write_capacity            = 2
+  autoscaled_write_capacity = true
+  hash_key                  = "TestTableHashKey"
 
   attribute {
     name = "TestTableHashKey"
